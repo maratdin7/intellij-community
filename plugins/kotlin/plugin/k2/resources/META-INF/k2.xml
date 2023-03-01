@@ -177,6 +177,16 @@
   </extensions>
 
   <extensions defaultExtensionNs="com.intellij">
+    <backgroundPostStartupActivity implementation="org.jetbrains.kotlin.idea.CoroutinesCounterActivity"/>
+
+    <codeInsight.lineMarkerProvider
+            language="kotlin"
+            implementationClass="org.jetbrains.kotlin.idea.line.marker.CoroutinesCounterLineMarker"/>
+
+    <projectService serviceImplementation="org.jetbrains.kotlin.idea.CoroutinesCounterService"/>
+  </extensions>
+
+  <extensions defaultExtensionNs="com.intellij">
     <buildProcess.parametersProvider implementation="org.jetbrains.kotlin.idea.compiler.configuration.KotlinBuildProcessParametersProvider"/>
 
     <applicationService serviceInterface="org.jetbrains.kotlin.idea.base.codeInsight.KotlinMainFunctionDetector"

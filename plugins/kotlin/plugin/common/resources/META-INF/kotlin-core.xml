@@ -422,6 +422,13 @@
             displayType="STICKY_BALLOON"
             key="kotlin.dist.downloading.failed.group.name"
     />
+
+    <notificationGroup
+            id="Coroutines counter"
+            displayType="STICKY_BALLOON"
+            key="kotlin.coroutines.counter.title"
+    />
+
   </extensions>
 
   <!-- Declaration search and Find Usages -->
