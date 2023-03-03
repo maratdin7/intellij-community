@@ -4,13 +4,13 @@ package org.jetbrains.kotlin.idea
 import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.ProjectActivity
+import org.jetbrains.annotations.ApiStatus
 import org.jetbrains.kotlin.idea.notification.showCoroutinesCounterNotification
 
-internal class CoroutinesCounterActivity : ProjectActivity {
-    companion object {
-        var enableCoroutineCounter = false
-    }
+@ApiStatus.Internal
+var enableCoroutineCounter = false
 
+internal class CoroutinesCounterActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         enableCoroutineCounter = false
 

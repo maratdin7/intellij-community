@@ -8,7 +8,7 @@ import com.intellij.openapi.editor.markup.GutterIconRenderer
 import com.intellij.openapi.util.NlsSafe
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.idea.CoroutinesCounterService
-import org.jetbrains.kotlin.idea.CoroutinesCounterActivity.Companion.enableCoroutineCounter
+import org.jetbrains.kotlin.idea.enableCoroutineCounter
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import javax.swing.Icon
 

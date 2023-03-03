@@ -2,6 +2,7 @@
 
 package org.jetbrains.kotlin.fir.testGenerator
 
+import org.jetbrains.kotlin.idea.AbstractCoroutinesCounterTest
 import org.jetbrains.kotlin.fir.testGenerator.codeinsight.generateK2CodeInsightTests
 import org.jetbrains.kotlin.idea.fir.analysis.providers.AbstractIdeKotlinAnnotationsResolverTest
 import org.jetbrains.kotlin.idea.fir.analysis.providers.sessions.AbstractSessionsInvalidationTest
@@ -277,6 +278,12 @@ private fun assembleWorkspace(): TWorkspace = workspace {
 
         testClass<AbstractFirLegacyUastValuesTest> {
             model("")
+        }
+    }
+
+    testGroup("coroutines-counter/tests", testDataPath = "testData") {
+        testClass<AbstractCoroutinesCounterTest> {
+            model("", passTestDataPath = false)
         }
     }
 }

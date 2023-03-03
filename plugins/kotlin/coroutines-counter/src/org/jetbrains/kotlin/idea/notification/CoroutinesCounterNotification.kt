@@ -8,10 +8,10 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
-import org.jetbrains.kotlin.idea.CoroutinesCounterActivity
 import org.jetbrains.kotlin.idea.CoroutinesCounterService
 import org.jetbrains.kotlin.idea.KotlinIcons
 import org.jetbrains.kotlin.idea.base.resources.KotlinBundle
+import org.jetbrains.kotlin.idea.enableCoroutineCounter
 
 fun showCoroutinesCounterNotification(project: Project, coroutinesCounter: CoroutinesCounterService) {
     //RunOnceUtil.runOnceForProject(project, "kotlin.coroutines.counter.was.shown.once") {
@@ -30,7 +30,7 @@ fun showCoroutinesCounterNotification(project: Project, coroutinesCounter: Corou
             object : NotificationAction("Yes") {
                 override fun actionPerformed(e: AnActionEvent, notification: Notification) {
                     coroutinesCounter.coroutinesCounter()
-                    CoroutinesCounterActivity.enableCoroutineCounter = true
+                    enableCoroutineCounter = true
                     notification.expire()
                 }
             }
