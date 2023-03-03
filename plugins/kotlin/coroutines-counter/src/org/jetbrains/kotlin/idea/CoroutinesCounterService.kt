@@ -28,7 +28,6 @@ class CoroutinesCounterService(private val project: Project) {
             CoroutinesCounterService::computeNumOfCoroutinesInFunction
         )
 
-
         private fun Module.hasCoroutines(): Boolean {
             val findLibrary = findLibrary {
                 "kotlinx-coroutines-core" in it.presentableName
@@ -41,8 +40,15 @@ class CoroutinesCounterService(private val project: Project) {
         }
     }
 
-    private val modulesWithCoroutinesApi: Map<Module, Collection<KtFunction>> by lazy {
-        project.modules.filter { it.hasCoroutines() }
+    private val concurrentMap = ConcurrentHashMap<KtFunction, Expression>()
+
+    private val analyserVisitor = AnalyserVisitor(concurrentMap)
+
+    private val modulesWithCoroutines: Collection<Module>
+        get() = project.modules.filter { it.hasCoroutines() }
+
+    private val modulesFunctionsMap: Map<Module, Set<KtFunction>>
+        get() = modulesWithCoroutines
             .associateWith { module ->
                 FileTypeIndex.getFiles(KotlinFileType.INSTANCE, module.moduleScope)
                     .mapNotNull { it.toPsiFile(project) }
@@ -55,13 +61,8 @@ class CoroutinesCounterService(private val project: Project) {
                         }
                     }
             }
-    }
 
-    private val concurrentMap = ConcurrentHashMap<KtFunction, Expression>()
-
-    private val analyserVisitor = AnalyserVisitor(concurrentMap)
-
-    fun numOfModulesWithCoroutines() = modulesWithCoroutinesApi.keys.size
+    fun numOfModulesWithCoroutines() = modulesWithCoroutines.size
 
     fun getNumOfCoroutines(ktNamedFunction: KtNamedFunction): TerminatedExpression {
         val expr = concurrentMap.computeIfAbsent(ktNamedFunction) { Fun(ktNamedFunction) }
@@ -79,7 +80,7 @@ class CoroutinesCounterService(private val project: Project) {
             runBlockingCancellable {
                 smartReadAction(project) {
                     runBlockingCancellable {
-                        modulesWithCoroutinesApi.map { it.value }.run {
+                        modulesFunctionsMap.map { it.value }.run {
                             stages.forEachIndexed { i, stage ->
                                 runParallelWithProgress(
                                     KotlinBundle.message(
@@ -124,7 +125,10 @@ class CoroutinesCounterService(private val project: Project) {
             is Fun -> {
                 if (ktFunction in set) return TerminatedExpression.Infinity
 
-                val expr = concurrentMap.getOrPut(this.ktFunction) { ktFunction.accept(analyserVisitor, null) }
+                val expr = concurrentMap.getOrPut(this.ktFunction) {
+                    ktFunction.accept(analyserVisitor, null)
+                    concurrentMap[ktFunction] ?: TerminatedExpression.SomeCoroutines
+                }
                 set += ktFunction
                 val terminatedExpr = expr.compute(set)
                 set.remove(ktFunction)
