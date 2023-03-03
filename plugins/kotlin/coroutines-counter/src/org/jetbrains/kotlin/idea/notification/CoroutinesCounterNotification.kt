@@ -6,13 +6,10 @@ import com.intellij.notification.NotificationAction
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.application.smartReadAction
-import com.intellij.openapi.progress.runBackgroundableTask
-import com.intellij.openapi.progress.runBlockingCancellable
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
-import org.jetbrains.kotlin.idea.CoroutinesCounterService
 import org.jetbrains.kotlin.idea.CoroutinesCounterActivity
+import org.jetbrains.kotlin.idea.CoroutinesCounterService
 import org.jetbrains.kotlin.idea.KotlinIcons
 import org.jetbrains.kotlin.idea.base.resources.KotlinBundle
 
@@ -20,21 +17,20 @@ fun showCoroutinesCounterNotification(project: Project, coroutinesCounter: Corou
     //RunOnceUtil.runOnceForProject(project, "kotlin.coroutines.counter.was.shown.once") {
     NotificationGroupManager.getInstance()
         .getNotificationGroup("Coroutines counter")
-        .createNotification(KotlinBundle.message("kotlin.coroutines.counter.title"),
-                            KotlinBundle.message("kotlin.coroutines.counter.message.text", coroutinesCounter.numOfModulesWithCoroutines(), project.modules.size),
-                            NotificationType.INFORMATION
+        .createNotification(
+            KotlinBundle.message("kotlin.coroutines.counter.title"),
+            KotlinBundle.message(
+                "kotlin.coroutines.counter.message.text",
+                coroutinesCounter.numOfModulesWithCoroutines(),
+                project.modules.size
+            ),
+            NotificationType.INFORMATION
         )
         .addAction(
             object : NotificationAction("Yes") {
                 override fun actionPerformed(e: AnActionEvent, notification: Notification) {
-                    runBackgroundableTask(KotlinBundle.message("kotlin.coroutines.counter.title")) {
-                        runBlockingCancellable {
-                            smartReadAction(project) {
-                                runBlockingCancellable { CoroutinesCounterService.getInstance(project).coroutinesCounter() }
-                                CoroutinesCounterActivity.enableCoroutineCounter = true
-                            }
-                        }
-                    }
+                    coroutinesCounter.coroutinesCounter()
+                    CoroutinesCounterActivity.enableCoroutineCounter = true
                     notification.expire()
                 }
             }

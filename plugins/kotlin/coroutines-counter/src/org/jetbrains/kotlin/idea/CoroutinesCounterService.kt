@@ -2,11 +2,10 @@
 package org.jetbrains.kotlin.idea
 
 import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.smartReadAction
 import com.intellij.openapi.components.service
 import com.intellij.openapi.module.Module
-import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.openapi.progress.forEachWithProgress
-import com.intellij.openapi.progress.withBackgroundProgress
+import com.intellij.openapi.progress.*
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.modules
 import com.intellij.psi.search.FileTypeIndex
@@ -24,7 +23,11 @@ import java.util.concurrent.ConcurrentHashMap
 
 class CoroutinesCounterService(private val project: Project) {
     companion object {
-        const val NUM_OF_STAGES = 2
+        private val stages = listOf<CoroutinesCounterService.(ktFunction: KtFunction) -> Unit>(
+            CoroutinesCounterService::analyseFunction,
+            CoroutinesCounterService::computeNumOfCoroutinesInFunction
+        )
+
 
         private fun Module.hasCoroutines(): Boolean {
             val findLibrary = findLibrary {
@@ -34,7 +37,7 @@ class CoroutinesCounterService(private val project: Project) {
         }
 
         fun getInstance(project: Project): CoroutinesCounterService = runReadAction {
-          if (project.isDisposed) throw ProcessCanceledException() else project.service()
+            if (project.isDisposed) throw ProcessCanceledException() else project.service()
         }
     }
 
@@ -47,7 +50,7 @@ class CoroutinesCounterService(private val project: Project) {
                     .flatMapTo(mutableSetOf()) { ktFile ->            // TODO: Maybe parallel?
                         mutableListOf<KtFunction>().also { fileFunctions ->
                             ktFile.accept(namedFunctionRecursiveVisitor { ktNamedFunction ->
-                              fileFunctions += ktNamedFunction
+                                fileFunctions += ktNamedFunction
                             })
                         }
                     }
@@ -65,19 +68,34 @@ class CoroutinesCounterService(private val project: Project) {
         return expr.compute()
     }
 
-    suspend fun coroutinesCounter() {
-        val getTitle = { n: Int -> KotlinBundle.message("kotlin.coroutines.counter.progress.bar.title", n, NUM_OF_STAGES) }
-
-        modulesWithCoroutinesApi.map { it.value }.run {
-            runParallelWithProgress(getTitle(1)) { ktFunctions -> ktFunctions.forEach(::analyseFunction) }
-            runParallelWithProgress(getTitle(2)) { ktFunctions -> ktFunctions.forEach(::computeNumOfCoroutinesInFunction) }
+    fun coroutinesCounter() {
+        suspend fun <T> List<T>.runParallelWithProgress(title: String, block: suspend (v: T) -> Unit) {
+            withBackgroundProgress(project, title, true) {
+                this@runParallelWithProgress.forEachWithProgress(true, block)
+            }
         }
-    }
 
-    private suspend fun <T> List<T>.runParallelWithProgress(title: String, block: suspend (v: T) -> Unit) {
-      withBackgroundProgress(project, title, true) {
-        this@runParallelWithProgress.forEachWithProgress(true, block)
-      }
+        runBackgroundableTask(KotlinBundle.message("kotlin.coroutines.counter.title")) { progressIndicator ->
+            runBlockingCancellable {
+                smartReadAction(project) {
+                    runBlockingCancellable {
+                        modulesWithCoroutinesApi.map { it.value }.run {
+                            stages.forEachIndexed { i, stage ->
+                                runParallelWithProgress(
+                                    KotlinBundle.message(
+                                        "kotlin.coroutines.counter.progress.bar.title",
+                                        i + 1,
+                                        stages.size
+                                    )
+                                ) { ktFunctions -> ktFunctions.forEach { this@CoroutinesCounterService.stage(it) } }
+
+                                progressIndicator.fraction = i.toDouble() / stages.size
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     private fun analyseFunction(ktFunction: KtFunction) {
@@ -85,7 +103,7 @@ class CoroutinesCounterService(private val project: Project) {
     }
 
     private fun computeNumOfCoroutinesInFunction(ktFunction: KtFunction) {
-      concurrentMap.computeIfPresent(ktFunction) { _, expr -> expr.compute() } ?: Fun(ktFunction).compute()
+        concurrentMap.computeIfPresent(ktFunction) { _, expr -> expr.compute() } ?: Fun(ktFunction).compute()
     }
 
     private fun Expression.compute(set: MutableSet<KtFunction> = mutableSetOf()): TerminatedExpression {
@@ -98,6 +116,7 @@ class CoroutinesCounterService(private val project: Project) {
                     Operation.PLUS -> {
                         (leftAns + rightAns) as TerminatedExpression
                     }
+
                     Operation.TIMES -> TODO("A more complex analysis of the conditions is required")
                 }
             }

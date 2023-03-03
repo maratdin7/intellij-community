@@ -14,8 +14,8 @@ internal class CoroutinesCounterActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
         enableCoroutineCounter = false
 
-      smartReadAction(project) {
-        showCoroutinesCounterNotification(project, CoroutinesCounterService.getInstance(project))
-      }
+        smartReadAction(project) {
+            showCoroutinesCounterNotification(project, CoroutinesCounterService.getInstance(project))
+        }
     }
 }
